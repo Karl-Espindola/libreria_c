@@ -39,6 +39,7 @@ void registrarUsuario();
 void listarUsuarios();
 void listarUsuariosConPrestamos();
 void loguearUsuario();
+int verificarUsuariosRepetidos(char nick[40]);
 void modificarEstadoUsuario();
 void registrarLibro();
 void listarLibros();
@@ -210,6 +211,18 @@ void menuAdm(){
         } 
 
     }
+}
+int verificarUsuariosRepetidos(char nick[40]){
+    Usuarios usuario;
+    FILE *fp = fopen("usuarios.bin", "rb");
+    fread(&usuario, sizeof(Usuarios), 1, fp);
+    while (!feof(fp))
+    {
+        if(strcmp(nick, usuario.nombre) == 0){
+            return 1;
+        }
+    }
+    return 0;
 }
 void listarUsuariosEnMora(){
     Usuarios usuario;
