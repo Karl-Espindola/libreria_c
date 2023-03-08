@@ -75,38 +75,36 @@ int main(){
     do{
         system("cls");
         printf("******** LIBRERIA **********\n\n");
-        printf("1: Ingresar como Administrador\n");
-        printf("2: Ingresar como Usuario\n");
-        printf("3: Registrarse\n");
+        printf("1: Ingresar\n");
+        printf("2: Registrarse\n");
         printf("0: Salir\n\n");
         printf("Opcion: ");
         scanf("%i",&opc);
 
         switch(opc){
             case 1:
-                while (opc1!=0){
-                    system("cls");
-                    fflush(stdin);
-                    printf("Ingrese su contrasenia de administrador: \n");
-                    gets(pass);
-                    if(strcmp(pass, passAdm)==0){
-                        menuAdm();
-                        opc1=0;
-                    }
-                    else{
-                        printf("\nContrasenia incorrecta\n");
-                        printf("\n1: Reintentar");
-                        printf("\n0: Volver al menu principal\n");
-                        printf("\nOpcion: ");
-                        scanf("%i", &opc1);
-                    }
-                }
+                loguearUsuario();
+
+                // while (opc1!=0){
+                //     system("cls");
+                //     fflush(stdin);
+                //     printf("Ingrese su contrasenia de administrador: \n");
+                //     gets(pass);
+                //     if(strcmp(pass, passAdm)==0){
+                //         menuAdm();
+                //         opc1=0;
+                //     }
+                //     else{
+                //         printf("\nContrasenia incorrecta\n");
+                //         printf("\n1: Reintentar");
+                //         printf("\n0: Volver al menu principal\n");
+                //         printf("\nOpcion: ");
+                //         scanf("%i", &opc1);
+                //     }
+                // }
 
                 break;
             case 2:
-                loguearUsuario();
-                break;
-            case 3:
                 fflush(stdin);
                 registrarUsuario();
                 system("pause");
@@ -219,9 +217,12 @@ int verificarUsuariosRepetidos(char nick[40]){
     while (!feof(fp))
     {
         if(strcmp(nick, usuario.nombre) == 0){
+            fclose(fp);
             return 1;
         }
+        fread(&usuario, sizeof(Usuarios), 1, fp);
     }
+    fclose(fp);
     return 0;
 }
 void listarUsuariosEnMora(){
@@ -439,6 +440,17 @@ void registrarUsuario(){
     char nom[40];
     char pass[40];
     int cod;
+    int repetido;
+    
+    system("cls");
+    // printf("cod: %i\n", cod);
+    printf("Escriba un nombre: ");
+    gets(nom);
+
+    repetido = verificarUsuariosRepetidos(nom);
+
+    
+
     FILE *fp=fopen("usuarios.bin", "rb+");
     fseek(fp, 0, SEEK_END);
     int pos= ftell(fp);
@@ -456,17 +468,22 @@ void registrarUsuario(){
     usuario.estado = 1;
     usuario.conPrestamo = 0;
     usuario.mora = 0;
-    system("cls");
-    printf("cod: %i\n", cod);
-    printf("Escriba un nombre: ");
-    gets(nom);
-    strcpy(usuario.nombre, nom);
-    printf("\nEscriba una contrasenia: ");
-    gets(pass);
-    strcpy(usuario.password, pass);
-    printf("\nSu registro fue exitoso.\n");
+    
+    if(repetido == 0){
+        
+        strcpy(usuario.nombre, nom);
+        printf("\nEscriba una contrasenia: ");
+        gets(pass);
+        strcpy(usuario.password, pass);
+        fwrite(&usuario, sizeof(Usuarios), 1, fp);
+        printf("\nSu registro fue exitoso.\n");
 
-    fwrite(&usuario, sizeof(Usuarios), 1, fp);
+    }
+    else if (repetido == 1)
+    {
+        printf("\nEste usuario ya existe.\n");
+    }
+    
     fclose(fp);
     
 }    
@@ -475,6 +492,7 @@ void loguearUsuario(){
     int existe=0;
     char nick[40];
     char pass[40];
+    char amdin[10]="admin";
     FILE *fp = fopen("usuarios.bin", "rb");
     fflush(stdin);
     system("cls");
@@ -484,29 +502,27 @@ void loguearUsuario(){
     gets(pass);
     fread(&usuario, sizeof(Usuarios), 1, fp);
     while(!feof(fp)){
-        if((strcmp(usuario.nombre, nick)==0) && (strcmp(usuario.password, pass))==0 && usuario.estado == 0){
-            existe = -1;
-            // printf("\nEstado usuario: %i\n", usuario.estado);
-            // system("pause");
-            if(existe = -1){
-                break;
+        //Verifica si el usuario y la contraseña coinciden con alguno registrado
+        if((strcmp(usuario.nombre, nick)==0) && (strcmp(usuario.password, pass))==0){
+            
+            if(strcmp(amdin, nick) == 0){
+                menuAdm();
+                existe = 1;
             }
-        }
-        else if((strcmp(usuario.nombre, nick)==0) && (strcmp(usuario.password, pass))==0 && usuario.estado == 1){
-            ID_USUARIO=usuario.id;
-            existe = menuUsuario(nick);
+            else{
+                ID_USUARIO=usuario.id;
+                existe = menuUsuario(nick);
+            }
             break;
         }
+        
         fread(&usuario, sizeof(Usuarios), 1, fp);
     }
     if(existe==0){
         printf("\nUsuario o contrasenia INCORRECTOS\n");
         system("pause");
     }
-    else if(existe==-1){
-        printf("\nSu usuario ha sido bloqueado\n");
-        system("pause");
-    }
+    
     fclose(fp);
 }
 int menuUsuario(char nick[40]){
