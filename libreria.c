@@ -44,6 +44,7 @@ void modificarEstadoUsuario();
 void registrarLibro();
 void listarLibros();
 void prestarLibro();
+int verificarEstadoMora(int usuarioID);
 int validarPrestamo(int cod);
 Libros consultarLibro(int cod);
 int listarLibrosPrestados(int cod); //Lista de libros prestados por el usuario
@@ -881,59 +882,83 @@ void sinLibrosPrestados(){
 
 }
 void prestarLibro(){
-    Libros libro;
-    Usuarios usuario;
-    FILE *fp = fopen("libros.bin", "rb+");
-    FILE *fileUsuarios = fopen("usuarios.bin", "rb+");
-    int cod;
-    int valido;
-    listarLibros();
-    printf("\nEscribe el codigo el libro que quieres tomar: \n");
-    scanf("%i", &cod);
-    rewind(fp);
-    fread(&libro, sizeof(Libros), 1 ,fp);
-    valido = validarPrestamo(cod);
-    while (!feof(fp) && valido!=-1)
-    {
-        if(libro.id==cod && libro.disponibles > 0){
-            libro.disponibles = libro.disponibles-1;
-            fseek(fp, -(sizeof(Libros)), SEEK_CUR);
-            fwrite(&libro, sizeof(Libros), 1, fp);
-            registrarPrestamo(cod);
-            valido = 1;
-            break;
-        }
-        else{
-            valido = 0;
-        }
-        fread(&libro, sizeof(Libros), 1 ,fp);
-    }
+    
+    int usuarioID = ID_USUARIO;
+    int mora = verificarEstadoMora(usuarioID);
 
-    if(valido==1){
-        fread(&usuario, sizeof(Usuarios), 1 ,fileUsuarios);
-        while (!feof(fileUsuarios))
+    if(mora == 0){
+
+        Libros libro;
+        Usuarios usuario;
+        FILE *fp = fopen("libros.bin", "rb+");
+        FILE *fileUsuarios = fopen("usuarios.bin", "rb+");
+        int cod;
+        int valido;
+
+        listarLibros();
+        printf("\nEscribe el codigo el libro que quieres tomar: \n");
+        scanf("%i", &cod);
+        rewind(fp);
+        fread(&libro, sizeof(Libros), 1 ,fp);
+        valido = validarPrestamo(cod);
+        while (!feof(fp) && valido!=-1)
         {
-            if(usuario.id == ID_USUARIO){
-                usuario.conPrestamo = 1;
-                fseek(fileUsuarios, -sizeof(Usuarios), SEEK_CUR);
-                fwrite(&usuario, sizeof(Usuarios), 1 , fileUsuarios);
+            if(libro.id==cod && libro.disponibles > 0){
+                libro.disponibles = libro.disponibles-1;
+                fseek(fp, -(sizeof(Libros)), SEEK_CUR);
+                fwrite(&libro, sizeof(Libros), 1, fp);
+                registrarPrestamo(cod);
+                valido = 1;
                 break;
             }
-            fread(&usuario, sizeof(Usuarios), 1 ,fileUsuarios);
+            else{
+                valido = 0;
+            }
+            fread(&libro, sizeof(Libros), 1 ,fp);
         }
-        printf("\nPrestamo realizado\n");
+
+        if(valido==1){
+            fread(&usuario, sizeof(Usuarios), 1 ,fileUsuarios);
+            while (!feof(fileUsuarios))
+            {
+                if(usuario.id == ID_USUARIO){
+                    usuario.conPrestamo = 1;
+                    fseek(fileUsuarios, -sizeof(Usuarios), SEEK_CUR);
+                    fwrite(&usuario, sizeof(Usuarios), 1 , fileUsuarios);
+                    break;
+                }
+                fread(&usuario, sizeof(Usuarios), 1 ,fileUsuarios);
+            }
+            printf("\nPrestamo realizado\n");
+        }
+        else if (valido==0)
+        {
+            printf("\nNo hay ejemplares disponibles\n");
+        }
+        else if (valido==-1)
+        {
+            printf("\nYa tomaste este libro\n");
+        }
+        
+        fclose(fp);
+        fclose(fileUsuarios);
     }
-    else if (valido==0)
-    {
-        printf("\nNo hay ejemplares disponibles\n");
+    else if(mora == 1){
+        printf("\nTines libros vencidos. Devuelve tus libros vencidos\n");
     }
-    else if (valido==-1)
-    {
-        printf("\nYa tomaste este libro\n");
+}
+int verificarEstadoMora(int usuarioID){
+    Usuarios usuario;
+    FILE *fp = fopen("usuarios.bin", "rb");
+
+    fread(&usuario, sizeof(Usuarios), 1, fp);
+    while(!feof(fp)){
+        if(usuario.id == usuarioID){
+            fclose(fp);
+            return usuario.mora;
+        }
+        fread(&usuario, sizeof(Usuarios), 1, fp);
     }
-    
-    fclose(fp);
-    fclose(fileUsuarios);
 }
 void eliminarPrestamo(int idUsuario, int codLibro){
     Prestamos prestamo;
