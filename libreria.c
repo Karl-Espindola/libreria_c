@@ -55,6 +55,7 @@ void prestamosPorLibro();//Lista de libros que han sido prestados por la bibliot
 void eliminarPrestamoPorLibro(int codLibro);
 void eliminarLibro(int codLibro);
 void listarUsuariosEnMora();
+void usariosPrestaronEseLibro(int codLibro);
 void menuAdm();
 int menuUsuario(char nick[40]);
 void validarFechaEntrega();
@@ -70,10 +71,9 @@ int main(){
 
     int opc=-1;
     int opc1=-1;
-    char pass[40];
-    char passAdm[40];
-    strcpy(passAdm, "1234");
+
     do{
+        validarFechaEntrega();
         system("cls");
         printf("******** LIBRERIA **********\n\n");
         printf("1: Ingresar\n");
@@ -85,25 +85,6 @@ int main(){
         switch(opc){
             case 1:
                 loguearUsuario();
-
-                // while (opc1!=0){
-                //     system("cls");
-                //     fflush(stdin);
-                //     printf("Ingrese su contrasenia de administrador: \n");
-                //     gets(pass);
-                //     if(strcmp(pass, passAdm)==0){
-                //         menuAdm();
-                //         opc1=0;
-                //     }
-                //     else{
-                //         printf("\nContrasenia incorrecta\n");
-                //         printf("\n1: Reintentar");
-                //         printf("\n0: Volver al menu principal\n");
-                //         printf("\nOpcion: ");
-                //         scanf("%i", &opc1);
-                //     }
-                // }
-
                 break;
             case 2:
                 fflush(stdin);
@@ -126,19 +107,16 @@ void menuAdm(){
     int opc2=-1;
     int cod;
     int codLibro;
+    int opcion;
+
     while(opc2!=0){
         validarFechaEntrega();
         system("cls");
         printf("***** Menu del Admin *****\n\n"); 
-        printf("1: Ver usuarios registrados\n"); 
-        printf("2: Registrar nuevo libro\n"); 
-        printf("3: Listar libros\n"); 
-        printf("4: Estado de usuarios\n"); 
-        printf("5: Prestamos por usuario\n"); 
-        printf("6: Editar libro\n"); 
-        printf("7: Prestamos por libro\n"); 
-        printf("8: Eliminar libro\n"); 
-        printf("9: Ver usuarios en mora\n");
+        printf("1: Libros\n"); 
+        printf("2: Prestados por libro\n"); 
+        printf("3: Prestados por usuario\n"); 
+        printf("4: Usuarios retrasados\n"); 
         printf("0: Volver\n");
         printf("\nOpcion: ");
         scanf("%i",&opc2);
@@ -146,26 +124,50 @@ void menuAdm(){
         {
             case 1:
                 system("cls");
-                listarUsuarios();
-                system("pause");
+                listarLibros();
+                printf("---------------------\n");
+                printf("\n1: Agregar libro");
+                printf("\n2: Editar libro");
+                printf("\n3: Borrar libro");
+                printf("\n0: Volver");
+                printf("\nOpcion: ");
+                scanf("%i", &opcion);
+
+                if(opcion == 1){
+                    system("cls");
+                    registrarLibro();
+                    printf("El libro ha sido registrado\n");
+                    system("pause");
+                }
+                else if(opcion == 2){
+                    system("cls");
+                    listarLibros();
+                    printf("\nIngresa el id del libro a editar: ");
+                    scanf("%i", &codLibro);
+                    editarLibro(codLibro);
+                    system("pause");
+                }
+                else if (opcion == 3){
+                    system("cls");
+                    listarLibros();
+                    printf("\nIngresa el id del libro a eliminar: ");
+                    scanf("%i", &codLibro);
+                    eliminarLibro(codLibro);
+                    eliminarPrestamoPorLibro(codLibro);//Elimina todos los prestamos realizados de un determinado libro
+                    printf("\nLibro eliminado\n\n");
+                    system("pause");
+                }
+                
                 break;
             case 2:
                 system("cls");
-                registrarLibro();
-                printf("El libro ha sido registrado\n");
+                prestamosPorLibro();//Lista de libros que han sido prestados por la biblioteca 
+                printf("\nIngresa el id del libro para ver los usarios quienes lo han tomado prestado: ");
+                scanf("%i", &codLibro);
+                usariosPrestaronEseLibro(codLibro);
                 system("pause");
                 break;
             case 3:
-                system("cls");
-                listarLibros();
-                system("pause");
-                break;
-            case 4:
-                system("cls");
-                modificarEstadoUsuario();
-                // system("pause");
-                break;
-            case 5:
                 system("cls");
                 listarUsuariosConPrestamos();
                 printf("\nIngrese ID de usario a consultar: \n");
@@ -174,30 +176,7 @@ void menuAdm(){
                 listarLibrosPrestados(cod);
                 system("pause");
                 break;
-            case 6:
-                system("cls");
-                listarLibros();
-                printf("\nIngresa el id del libro a editar: ");
-                scanf("%i", &codLibro);
-                editarLibro(codLibro);
-                system("pause");
-                break;
-            case 7:
-                system("cls");
-                prestamosPorLibro();//Lista de libros que han sido prestados por la biblioteca 
-                system("pause");
-                break;
-            case 8:
-                system("cls");
-                listarLibros();
-                printf("\nIngresa el id del libro a eliminar: ");
-                scanf("%i", &codLibro);
-                eliminarLibro(codLibro);
-                eliminarPrestamoPorLibro(codLibro);//Elimina todos los prestamos realizados de un determinado libro
-                printf("\nLibro eliminado\n\n");
-                system("pause");
-                break;
-            case 9:
+            case 4:
                 system("cls");
                 listarUsuariosEnMora();
                 system("pause");
@@ -211,6 +190,33 @@ void menuAdm(){
 
     }
 }
+
+void usariosPrestaronEseLibro(int codLibro){
+    Prestamos prestamo;
+    Usuarios usuario;
+    FILE *fprestamos = fopen("prestamos.bin", "rb");
+    FILE *fusuarios = fopen("usuarios.bin", "rb");
+    
+    fread(&prestamo, sizeof(Prestamos), 1, fprestamos);
+    while (!feof(fprestamos))
+    {
+        if(prestamo.idLibro == codLibro){
+            fread(&usuario, sizeof(Usuarios), 1, fusuarios);
+            while (!feof(fusuarios)){
+                if(usuario.id == prestamo.idUsuario){
+                    printf("Usuario: %s\n", usuario.nombre);
+                }
+                fread(&usuario, sizeof(Usuarios), 1, fusuarios);
+            }
+            rewind(fusuarios);
+        }
+        fread(&prestamo, sizeof(Prestamos), 1, fprestamos);
+    }
+    fclose(fprestamos);
+    fclose(fusuarios);
+    
+}
+
 int verificarUsuariosRepetidos(char nick[40]){
     Usuarios usuario;
     FILE *fp = fopen("usuarios.bin", "rb");
@@ -714,6 +720,7 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
                     while (!feof(fileUsuario))
                     {
                         if(usuario.id == i){
+                        
                             usuario.mora = 1;
                             fseek(fileUsuario, -sizeof(Usuarios), SEEK_CUR);
                             fwrite(&usuario, sizeof(Usuarios), 1, fileUsuario); 
@@ -737,6 +744,7 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
             while (!feof(fileUsuario))
             {
                 if(usuario.id == i && usuario.mora != 1){ // Este usuario tiene prestamos y ninguno vencido
+                    
                     usuario.mora = 0;
                     fseek(fileUsuario, -sizeof(Usuarios), SEEK_CUR);
                     fwrite(&usuario, sizeof(Usuarios), 1, fileUsuario); 
@@ -770,20 +778,20 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
         }
         
     }
-    if(demora != 1 && !feof(fileUsuario)){ //Si no hay nigun prestamo registrado todos usuarios
-        rewind(fileUsuario);               // tienen cero en su estado de mora (no tienen libros vencidos)
-        fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
-        while (!feof(fileUsuario))
-        {
-            
-            usuario.mora = 0;
-            fseek(fileUsuario, -sizeof(Usuarios), SEEK_CUR);
-            fwrite(&usuario, sizeof(Usuarios), 1, fileUsuario); 
-            fseek(fileUsuario, sizeof(Usuarios), SEEK_CUR);
-            fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
-        }
-        rewind(fileUsuario);
-    }
+    // if(demora != 1 && !feof(fileUsuario)){ //Si no hay nigun prestamo registrado todos usuarios
+    //     rewind(fileUsuario);               // tienen cero en su estado de mora (no tienen libros vencidos)
+    //     fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
+    //     while (!feof(fileUsuario))
+    //     {
+    //         // ERRORRRRR Aqui lucas id: 3 convierte mora en cero
+    //         usuario.mora = 0;
+    //         fseek(fileUsuario, -sizeof(Usuarios), SEEK_CUR);
+    //         fwrite(&usuario, sizeof(Usuarios), 1, fileUsuario); 
+    //         fseek(fileUsuario, sizeof(Usuarios), SEEK_CUR);
+    //         fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
+    //     }
+    //     rewind(fileUsuario);
+    // }
    fclose(fileUsuario);
    fclose(filePresta);
 }
