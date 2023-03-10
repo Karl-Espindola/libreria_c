@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "usuarios.h": "c",
+        "libros.h": "c",
+        "prestamos.h": "c"
+    }
+}
