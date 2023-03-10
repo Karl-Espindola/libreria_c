@@ -40,7 +40,7 @@ int dia;
 
 void registrarUsuario();
 void listarUsuarios();
-void listarUsuariosConPrestamos();
+int listarUsuariosConPrestamos();
 void loguearUsuario();
 int verificarUsuariosRepetidos(char nick[40]);
 void modificarEstadoUsuario();
@@ -49,15 +49,16 @@ void listarLibros();
 void prestarLibro();
 int verificarEstadoMora(int usuarioID);
 int validarPrestamo(int cod);
+int registrarPrestamo(int cod);
 Libros consultarLibro(int cod);
 int listarLibrosPrestados(int cod); //Lista de libros prestados por el usuario
 void editarLibro(int cod);
 void eliminarPrestamo(int idUsuario, int codLibro);
 int devolverLibro(int idUsuario, int codLibro);
-void prestamosPorLibro();//Lista de libros que han sido prestados por la biblioteca 
+int prestamosPorLibro();//Lista de libros que han sido prestados por la biblioteca 
 void eliminarPrestamoPorLibro(int codLibro);
 void eliminarLibro(int codLibro);
-void listarUsuariosEnMora();
+int listarUsuariosEnMora();
 void usariosPrestaronEseLibro(int codLibro);
 void menuAdm();
 int menuUsuario(char nick[40]);
@@ -109,9 +110,11 @@ void menuAdm(){
     int codLibro;
     int opcion;
     int opcion1;
-    int opcion2;
     while(opc2!=0){
+        
+        int existe;
         validarFechaEntrega();
+        
         system("cls");
         printf("***** Menu del Admin *****\n\n"); 
         printf("1: Libros\n"); 
@@ -173,24 +176,40 @@ void menuAdm(){
                 break;
             case 2:
                 system("cls");
-                prestamosPorLibro();//Lista de libros que han sido prestados por la biblioteca 
-                printf("\nIngresa el id del libro para ver los usarios quienes lo han tomado prestado: ");
-                scanf("%i", &codLibro);
-                usariosPrestaronEseLibro(codLibro);
+                existe = prestamosPorLibro();//Lista de libros que han sido prestados por la biblioteca
+                if(existe == 1){
+
+                    printf("\nIngresa el id del libro para ver los usarios quienes lo han tomado prestado: ");
+                    scanf("%i", &codLibro);
+                    usariosPrestaronEseLibro(codLibro);
+                } 
+                else{
+                    printf("\nNingun prestamo");
+                }
                 getch();
                 break;
             case 3:
                 system("cls");
-                listarUsuariosConPrestamos();
-                printf("\nIngrese ID de usario a consultar: \n");
-                scanf("%i", &cod);
-                system("cls");
-                listarLibrosPrestados(cod);
+                existe = listarUsuariosConPrestamos();
+                if(existe == 1){
+
+                    printf("\nIngrese ID de usario a consultar: \n");
+                    scanf("%i", &cod);
+                    system("cls");
+                    listarLibrosPrestados(cod);
+                }
+                else{
+                    printf("\nNingun prestamo");
+                }
                 getch();
                 break;
             case 4:
                 system("cls");
-                listarUsuariosEnMora();
+                existe = listarUsuariosEnMora();
+                if (existe != 1)
+                {
+                    printf("\nNinguno");
+                }
                 getch();
                 break;
             case 0: 
@@ -250,8 +269,9 @@ int verificarUsuariosRepetidos(char nick[40]){
     fclose(fp);
     return 0;
 }
-void listarUsuariosEnMora(){
+int listarUsuariosEnMora(){
     Usuarios usuario;
+    int existe;
     FILE *fp = fopen("usuarios.bin", "rb");
 
     fread(&usuario, sizeof(Usuarios), 1, fp);
@@ -259,28 +279,34 @@ void listarUsuariosEnMora(){
     {
         if (usuario.mora == 1)
         {
+            existe = 1;
             printf("ID: %i  Usuario: %s  Estado: %i   Con-Prestamo: %i  Mora: %i\n", usuario.id, usuario.nombre, usuario.estado, usuario.conPrestamo, usuario.mora);
         }
         fread(&usuario, sizeof(Usuarios), 1, fp);
     }
     fclose(fp);
-    
+    return existe;
 }
-void listarUsuariosConPrestamos(){
+
+int listarUsuariosConPrestamos(){
     Usuarios usuario;
+    int existe;
     FILE *fp = fopen("usuarios.bin", "rb");
 
     fread(&usuario, sizeof(Usuarios), 1, fp);
     while (!feof(fp))
     {
         if(usuario.conPrestamo == 1){
+            existe = 1;
             printf("ID: %i  Usuario: %s  Estado: %i Mora: %i\n", usuario.id, usuario.nombre, usuario.estado, usuario.mora);
         }
         fread(&usuario, sizeof(Usuarios), 1, fp);
     }
     fclose(fp);
+    return existe;
     
 }
+
 void eliminarLibro(int codLibro){
 
     Libros libro;
@@ -331,20 +357,26 @@ void eliminarPrestamoPorLibro(int codLibro){ //Elimina todos los prestamos reali
     remove("prestamos.bin");
     rename("temporalPresta.bin", "prestamos.bin");
 }
-void prestamosPorLibro(){
+
+int prestamosPorLibro(){
     Libros libro;
     int numPrestados;
+    int existe;
+
     FILE *fp = fopen("libros.bin", "rb");
     fread(&libro, sizeof(Libros), 1, fp);
     while(!feof(fp)){
         if(libro.disponibles < libro.ejemplares){
+            existe = 1;
             numPrestados = libro.ejemplares - libro.disponibles;
             printf("ID: %i  Titulo: %s - Prestados: %i\n", libro.id, libro.titulo, numPrestados);
         }
         fread(&libro, sizeof(Libros), 1, fp);
     }
     fclose(fp);
+    return existe;
 }
+
 void editarLibro(int cod){
     Libros libro;
     char nuevoTitulo[40];
@@ -738,11 +770,13 @@ void listarLibros(){
 
     fclose(fp);
 }
-void registrarPrestamo(int cod){
+
+
+int registrarPrestamo(int cod){
+
     Prestamos prestamo;
     FILE *fp = fopen("prestamos.bin", "ab");
-    prestamo.idUsuario = ID_USUARIO;
-    prestamo.idLibro = cod;
+
     system("cls");
     printf("Acontinuacion ingrese la fecha de entrega\n\n");
     printf("Anio: ");
@@ -751,8 +785,21 @@ void registrarPrestamo(int cod){
     scanf("%i", &prestamo.mes);
     printf("\ndia: ");
     scanf("%i", &prestamo.dia);
-    fwrite(&prestamo, sizeof(Prestamos), 1, fp);
-    fclose(fp);
+
+    if(prestamo.anio < 1 || (prestamo.mes < 1 || prestamo.mes > 12) || (prestamo.dia < 1 || prestamo.dia > 31)){
+
+        printf("\nFecha NO valida. Prestamo cancelado\n");
+        fclose(fp);
+        return -2;
+    }
+    else{
+
+        prestamo.idUsuario = ID_USUARIO;
+        prestamo.idLibro = cod;
+        fwrite(&prestamo, sizeof(Prestamos), 1, fp);
+        fclose(fp);
+        return 1;
+    }
 
 }
 void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -868,9 +915,25 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
         }
         
     }
+    
+    // fread(&prestamo, sizeof(Prestamos), 1, filePresta);
+    // if(feof(filePresta)){
+    //     fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
+    //     while (!feof(fileUsuario))
+    //     {
+    //         usuario.mora = 0;
+    //         fseek(fileUsuario, -sizeof(Usuarios), SEEK_CUR);
+    //         fwrite(&usuario, sizeof(Usuarios), 1, fileUsuario);
+    //         fseek(fileUsuario, sizeof(Usuarios), SEEK_CUR);
+    //         fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
+    //     }
+    // }
+    
+    
    fclose(fileUsuario);
    fclose(filePresta);
 }
+
 int validarPrestamo(int cod){
     Prestamos prestamo;
     int valido;
@@ -946,6 +1009,7 @@ int listarLibrosPrestados(int cod){
     fclose(fileUsuario);
     return 1;
 }
+
 void sinLibrosPrestados(){
     Prestamos prestamo;
     Libros libro;
@@ -984,14 +1048,15 @@ void prestarLibro(){
     int usuarioID = ID_USUARIO;
     int mora;
     int opc2;
-    
-    Libros libro;
-    Usuarios usuario;
-    FILE *fp = fopen("libros.bin", "rb+");
-    FILE *fileUsuarios = fopen("usuarios.bin", "rb+");
     int cod;
     int valido;
     int existe;
+    
+    Libros libro;
+    Usuarios usuario;
+
+    FILE *fp = fopen("libros.bin", "rb+");
+    FILE *fileUsuarios = fopen("usuarios.bin", "rb+");
 
     system("cls");
     listarLibros();
@@ -1020,11 +1085,12 @@ void prestarLibro(){
                     existe = 1;
                 }
                 if(libro.id == cod && libro.disponibles > 0){
-                    libro.disponibles = libro.disponibles-1;
-                    fseek(fp, -(sizeof(Libros)), SEEK_CUR);
-                    fwrite(&libro, sizeof(Libros), 1, fp);
-                    registrarPrestamo(cod);
-                    valido = 1;
+                    valido = registrarPrestamo(cod);
+                    if(valido != -2){
+                        libro.disponibles = libro.disponibles-1;
+                        fseek(fp, -(sizeof(Libros)), SEEK_CUR);
+                        fwrite(&libro, sizeof(Libros), 1, fp);
+                    }
                     break;
                 }
                 else{
@@ -1035,7 +1101,7 @@ void prestarLibro(){
 
             if(existe == 1){
 
-                if(valido==1){
+                if(valido == 1){
                     fread(&usuario, sizeof(Usuarios), 1 ,fileUsuarios);
                     while (!feof(fileUsuarios))
                     {
@@ -1049,12 +1115,12 @@ void prestarLibro(){
                     }
                     printf("\nPrestamo realizado\n");
                 }
-                else if (valido==0)
+                else if (valido == 0)
                 {
                     printf("\nNo hay ejemplares disponibles\n");
                 }
             }
-            else if (valido==-1)
+            else if (valido == -1)
             {
                 printf("\nYa tomaste este libro\n");
             }
@@ -1092,6 +1158,9 @@ void eliminarPrestamo(int idUsuario, int codLibro){
 
     fread(&prestamo, sizeof(Prestamos), 1, presta);
     while(!feof(presta)){
+            // if(prestamo.idUsuario == idUsuario && prestamo.idLibro == codLibro){
+            //     system("pause");
+            // }
         if(prestamo.idUsuario == idUsuario && prestamo.idLibro != codLibro){
             fwrite(&prestamo, sizeof(Prestamos), 1, temporalPresta);
         }
@@ -1105,6 +1174,7 @@ void eliminarPrestamo(int idUsuario, int codLibro){
     remove("prestamos.bin");
     rename("temporalPresta.bin", "prestamos.bin");
 }
+
 int devolverLibro(int idUsuario, int codLibro){
     Libros libro;
     int existe;
@@ -1125,6 +1195,7 @@ int devolverLibro(int idUsuario, int codLibro){
     if(existe != 1){
         printf("\nNo tienes ese libro\n");
         getch();
+        fclose(fp);
         return 0;
     }
     else{
