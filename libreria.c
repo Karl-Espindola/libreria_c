@@ -11,18 +11,11 @@ void menuAdm();
 int menuUsuario(char nick[40]);
 
 int main(){
-    
-    // Obtenemos la fecha actual //
-
-    time_t actual = time(NULL); 
-    struct tm *tm = localtime(&actual);
-    anio= tm->tm_year+1900;
-    mes = tm->tm_mon+1;
-    dia = tm->tm_mday;
 
     int opc=-1;
 
     do{
+        tiempoActual();
         validarFechaEntrega(); //Verifica las fechas de vencimiento y modifica el estado del usuario (mora)
        
        /* MENU PRINCIPAL */
@@ -121,6 +114,7 @@ int menuUsuario(char nick[40]){
     
     while (opc2!=0)
     {
+        tiempoActual();
         validarFechaEntrega(); //Verifica las fechas de vencimiento y modifica el estado del usuario (mora)
         sinLibrosPrestados(); //Cambia el estado de prestamo del usuario si no tiene libros prestados
 
@@ -144,6 +138,8 @@ int menuUsuario(char nick[40]){
         case 2:
             system("cls");
             cod = ID_USUARIO;
+            tiempoActual();
+            validarFechaEntrega();
             ok = listarLibrosPrestados(cod);
 
             if(ok == 1){
@@ -194,6 +190,8 @@ void menuAdm(){
     while(opc2!=0){
         
         int existe;
+
+        tiempoActual();
         validarFechaEntrega();
 
         /* MENU DEL ADMINISTRADOR */

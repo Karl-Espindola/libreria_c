@@ -6,6 +6,18 @@
 
 #include "para_menus.h"
 
+void tiempoActual(){ // Obtenemos la hora y fecha actuales //
+    
+    time_t actual = time(NULL); 
+    struct tm *tm = localtime(&actual);
+    anio= tm->tm_year+1900;
+    mes = tm->tm_mon+1;
+    dia = tm->tm_mday;
+    hora = tm->tm_hour;
+    min = tm->tm_min;
+    seg = tm->tm_sec;
+}
+
 void usariosPrestaronEseLibro(int codLibro){
     
     Prestamos prestamo;
@@ -358,45 +370,97 @@ void listarLibros(){
 
 int registrarPrestamo(int cod){
 
+    
     Prestamos prestamo;
-    FILE *fp = fopen("prestamos.bin", "ab");
+    FILE *fp = fopen("prestamos.bin", "rb+");
+    int id = 0;
 
-    system("cls");
-    printf("Acontinuacion ingrese la fecha de entrega\n\n");
-    printf("Anio: ");
-    scanf("%i", &prestamo.anio);
-    printf("\nMes: ");
-    scanf("%i", &prestamo.mes);
-    printf("\ndia: ");
-    scanf("%i", &prestamo.dia);
-
-    if(prestamo.anio < 1 || (prestamo.mes < 1 || prestamo.mes > 12) || (prestamo.dia < 1 || prestamo.dia > 31)){
-
-        printf("\nFecha NO valida. Prestamo cancelado\n");
-        fclose(fp);
-        return -2;
+    fread(&prestamo, sizeof(Prestamos), 1, fp);
+    while (!feof(fp))
+    {
+        id = prestamo.id;
+        fread(&prestamo, sizeof(Prestamos), 1, fp);
     }
+    if(id != 0){
+        prestamo.id = id + 1;
+    }
+    else{
+        prestamo.id = 1;
+    }
+
+    /*  Registra la fecha en en el prestamo  */
+
+    int resul = T_PRESTAMO / 60;
+    int modulo = T_PRESTAMO % 60;
+    int d = 0;
+    int h = 0;
+    int minutos = T_PRESTAMO;
+
+    if(T_PRESTAMO >= 60 || T_PRESTAMO <= -60){
+               
+        d = 0;
+        h = resul;
+        minutos = modulo;
+
+        if(h >= 24 || h <= -24){
+            d = h / 24;
+            h = h % 24;
+        }
+        
+    }
+
+    if(hora == 0 && h < 0){
+        prestamo.hora = 24 + h;
+    }
+    if(hora == 23 && h > 0){
+        prestamo.hora = h;
+    }
+    if(min == 0 && minutos < 0){
+        prestamo.min = 60 + minutos;
+    }
+    if(min == 59 && minutos > 0){
+        prestamo.min = minutos;
+    }
+
     else{
 
         prestamo.idUsuario = ID_USUARIO;
         prestamo.idLibro = cod;
+        prestamo.anio = anio;
+        prestamo.mes = mes;
+        prestamo.dia = dia + d;
+        prestamo.hora = hora + h;
+        prestamo.min = min + minutos;
+        prestamo.seg = seg;
+        prestamo.vencido = 0;
+    }
+
+    if(prestamo.anio < 1 || (prestamo.mes < 1 || prestamo.mes > 12) || (prestamo.dia < 1 || prestamo.dia > 31)){
+
+        printf("\nFecha NO valida. Prestamo cancelado Vence: %.2d/%.2d/%.2d\n", prestamo.anio, prestamo.mes, prestamo.dia);
+        fclose(fp);
+        return -2;
+    }
+    else{
+        
         fwrite(&prestamo, sizeof(Prestamos), 1, fp);
         fclose(fp);
         return 1;
     }
 
 }
+
 void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    
     Prestamos prestamo;
     Usuarios usuario;
     int demora;
     int mora;
     int existio;
     int lengS = 0;
-    FILE *filePresta = fopen("prestamos.bin", "rb");
+
     FILE *fileUsuario = fopen("usuarios.bin", "rb+");
 
-    
    fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
    while (!feof(fileUsuario))
    {
@@ -404,22 +468,26 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
     fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
    }
    rewind(fileUsuario);
-   
    for(int i = 1; i <= lengS; i++) 
     {   
-        // demora = 0;
+        FILE *filePresta = fopen("prestamos.bin", "rb");
+
         existio = 0;
         if(!feof(filePresta)){
             rewind(filePresta);
             fread(&prestamo, sizeof(Prestamos), 1, filePresta);
         }
         while (!feof(filePresta)) //cada iteracion del for es el id de un usuario que 
-        {                         // en el bucle while verificamos si tiene algu prestamo registrado
+        {                         // en el bucle while verificamos si tiene algun prestamo registrado
             demora = 0;
             mora = -1;
+
             if(prestamo.idUsuario == i){
                 existio = 1;
                 mora = 0;
+
+                /* El siguiente bloque de código es la validacion de la fecha de entrega con la 
+                fecha actual */
                 if(prestamo.anio < anio){
                     demora = 1;
                 }
@@ -431,8 +499,24 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
                         if(prestamo.dia < dia){
                             demora = 1;
                         }
+                        else if(prestamo.dia == dia){
+                            if(prestamo.hora < hora){
+                                demora = 1;
+                            }
+                            else if(prestamo.hora == hora){
+                                if(prestamo.min < min){
+                                    demora = 1;
+                                }
+                                else if(prestamo.min == min){
+                                    if(prestamo.seg < seg){
+                                        demora = 1;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+                /* Fin de la validacion del plazo de entrega */
                 
                 if(demora == 1){ 
                     mora = 1;
@@ -447,6 +531,7 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
                             fwrite(&usuario, sizeof(Usuarios), 1, fileUsuario); 
                             fseek(fileUsuario, sizeof(Usuarios), SEEK_CUR);
                             rewind(fileUsuario);
+                            prestamoVencido(usuario.id, prestamo.id);
                             
                             break;
                         }
@@ -454,10 +539,31 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
                     }
                 }
             }
-            
+                
+
             fread(&prestamo, sizeof(Prestamos), 1, filePresta);
         }
-        rewind(filePresta);
+        if(!feof(filePresta)){
+            rewind(filePresta);
+        }
+
+        if (demora != 1){ // Usuario No tiene prestamos vencidos
+            rewind(fileUsuario);
+            fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
+            while (!feof(fileUsuario))
+            {
+                if(usuario.id == i){
+
+                    fseek(fileUsuario, -sizeof(Usuarios), SEEK_CUR);
+                    usuario.mora = 0;
+                    fwrite(&usuario, sizeof(Usuarios), 1, fileUsuario); 
+
+                    break;
+                }
+                fread(&usuario, sizeof(Usuarios), 1, fileUsuario);
+            }
+            rewind(fileUsuario);
+        }
         
         if(mora == 0 && !feof(fileUsuario)){    //Este usuario tiene prestamos registrados y alguno sin vencer
             rewind(fileUsuario);
@@ -469,7 +575,6 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
                     usuario.mora = 0;
                     fseek(fileUsuario, -sizeof(Usuarios), SEEK_CUR);
                     fwrite(&usuario, sizeof(Usuarios), 1, fileUsuario); 
-                    // fseek(fileUsuario, sizeof(Usuarios), SEEK_CUR);
                     rewind(fileUsuario);
                     break;
                 }
@@ -496,11 +601,47 @@ void validarFechaEntrega(){//+++++++++++++++++++++++++++++++++++++++++++++++++++
             rewind(fileUsuario);
             
         }
-        
+        fclose(filePresta);
     }
     
    fclose(fileUsuario);
-   fclose(filePresta);
+}
+
+
+void prestamoVencido(int idUsuario, int idPrestamo){ //cambia el estado del prestamo a vencido 
+    Prestamos prestamo;
+    Usuarios usuario;
+    int vence;
+    FILE *fPrestamo = fopen("prestamos.bin", "rb+");
+    FILE *fUsuarios = fopen("usuarios.bin", "rb");
+
+    fread(&usuario, sizeof(Usuarios), 1, fUsuarios);
+    while (!feof(fUsuarios))
+    {
+        if(usuario.id == idUsuario && usuario.mora == 1){
+            vence = 1;
+            break;
+        }
+        fread(&usuario, sizeof(Usuarios), 1, fUsuarios);
+    }
+
+    if(vence == 1){
+        fread(&prestamo, sizeof(Prestamos), 1, fPrestamo);
+        while (!feof(fPrestamo))
+        {
+            if (prestamo.id == idPrestamo)
+            {
+                
+                prestamo.vencido = 1;
+                fseek(fPrestamo, -sizeof(Prestamos), SEEK_CUR);
+                fwrite(&prestamo, sizeof(Prestamos), 1, fPrestamo);
+                break;
+            }
+            fread(&prestamo, sizeof(Prestamos), 1, fPrestamo);
+        }
+    }
+    fclose(fPrestamo);
+    fclose(fUsuarios);
 }
 
 
@@ -551,14 +692,22 @@ int listarLibrosPrestados(int cod){
     Libros libro;
     Usuarios usuario;
     int prestado;
+    char vence[40];
     FILE *fp = fopen("prestamos.bin", "rb");
     FILE *fileUsuario = fopen("usuarios.bin", "rb+");
     
     fread(&prestamo, sizeof(Prestamos), 1, fp);
     while(!feof(fp)){
+        strcpy(vence, "");
         if(prestamo.idUsuario == cod){
+            if(prestamo.vencido == 1){
+                strcpy(vence, "VENCIDO");
+            }
             libro = consultarLibro(prestamo.idLibro); //ConsultarLibro() devuelve el registro de tipo libro con su info
-            printf("ID: %i  Titulo: %s\n", libro.id, libro.titulo);
+            printf("\nID: %i  Titulo: %s  %s \nVence: %.2d/%.2d/%.2d  %.2d:%.2d:%.2d\n", 
+            libro.id, libro.titulo, vence, prestamo.anio, prestamo.mes, 
+            prestamo.dia, prestamo.hora, prestamo.min, prestamo.seg);
+            
             prestado = 1;
         }
         fread(&prestamo, sizeof(Prestamos), 1, fp);

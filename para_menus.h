@@ -1,6 +1,8 @@
 #define ADMIN "admin"
 #define PASS_ADMIN "1234"
 
+#define T_PRESTAMO 5 // Plazo de entrega del libro en minutos
+
 typedef struct{
     int id;
     char titulo[40];
@@ -20,19 +22,28 @@ typedef struct{
 }Usuarios;
 
 typedef struct{
+    int id;
     int idUsuario;
     int idLibro;
     int dia;
     int mes;
     int anio;
+    int hora;
+    int min;
+    int seg;
+    int vencido;
+    
 }Prestamos;
 
 int ID_USUARIO; //Se le asigna valor cuando el usuario se loguea
 
-/* Se les asigna la fecha actual */
+/* Se les asignará la fecha y hora actual */
 int anio;
 int mes;
 int dia;
+int hora;
+int min;
+int seg;
 
 void registrarUsuario();
 void listarUsuarios();
@@ -57,3 +68,5 @@ int listarUsuariosEnMora();
 void usariosPrestaronEseLibro(int codLibro);
 void validarFechaEntrega();
 void sinLibrosPrestados();
+void prestamoVencido(int idUsuario, int idPrestamo);
+void tiempoActual();
